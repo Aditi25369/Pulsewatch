@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SplunkOps Copilot</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0e1a;
+      --bg-card: #111827;
+      --bg-input: #1a2235;
+      --bg-hover: #1e2d45;
+      --border: rgba(255,255,255,0.08);
+      --border-focus: rgba(99,153,255,0.5);
+      --text-primary: #f0f4ff;
+      --text-secondary: #8b9cc8;
+      --text-muted: #4a5a7a;
+      --accent: #4f7eff;
+      --accent-glow: rgba(79,126,255,0.15);
+      --critical: #e24b4a;
+      --high: #ef9f27;
+      --medium: #4f7eff;
+      --low: #1d9e75;
+      --unknown: #888780;
+      --success: #1d9e75;
+      --radius: 10px;
+      --radius-lg: 14px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--bg-card);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.2px;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      color: #fff;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .status-pill:hover { border-color: var(--border-focus); }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--unknown);
+    }
+    .status-dot.connected { background: var(--success); }
+    .status-dot.error { background: var(--critical); }
+
+    /* ── Layout ── */
+    .app {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 280px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-card);
+      flex-shrink: 0;
+    }
+
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 16px 16px 8px;
+    }
+
+    .quick-prompts {
+      padding: 0 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .quick-prompt {
+      padding: 9px 12px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      line-height: 1.4;
+      transition: all 0.15s;
+    }
+
+    .quick-prompt:hover {
+      background: var(--bg-hover);
+      border-color: var(--border);
+      color: var(--text-primary);
+    }
+
+    .quick-prompt .prompt-icon {
+      font-size: 14px;
+      margin-right: 6px;
+      opacity: 0.7;
+    }
+
+    .sidebar-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 12px 16px;
+    }
+
+    .config-section {
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .config-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .config-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-size: 13px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .config-input:focus { border-color: var(--border-focus); }
+
+    .config-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .config-select {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-size: 13px;
+      color: var(--text-primary);
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* ── Chat area ── */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      scroll-behavior: smooth;
+    }
+
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-track { background: transparent; }
+    .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      margin: auto;
+      text-align: center;
+      max-width: 440px;
+    }
+
+    .empty-icon {
+      width: 56px;
+      height: 56px;
+      background: var(--accent-glow);
+      border: 1px solid rgba(79,126,255,0.25);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 26px;
+      color: var(--accent);
+    }
+
+    .empty-state h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ── Message bubbles ── */
+    .msg { display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
+
+    .msg-user .msg-bubble {
+      background: var(--accent);
+      color: #fff;
+      align-self: flex-end;
+      border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);
+      padding: 10px 14px;
+      font-size: 14px;
+      max-width: 70%;
+      line-height: 1.5;
+    }
+
+    .msg-agent .msg-bubble {
+      align-self: flex-start;
+      max-width: 100%;
+    }
+
+    /* ── Thinking indicator ── */
+    .thinking {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .thinking-dots {
+      display: flex;
+      gap: 4px;
+    }
+
+    .thinking-dots span {
+      width: 5px;
+      height: 5px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    /* ── Live progress panel (SSE) ── */
+    .progress-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .progress-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .progress-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .progress-log {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .progress-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      padding: 4px 0;
+      animation: fadeInUp 0.25s ease;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .progress-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+      width: 16px;
+      text-align: center;
+    }
+
+    .progress-line.active { color: var(--accent); }
+    .progress-line.active .progress-icon { color: var(--accent); animation: pulse 1.2s infinite; }
+    .progress-line.muted { color: var(--text-muted); }
+    .progress-line.muted .progress-icon { color: var(--text-muted); }
+    .progress-line.done { color: var(--text-secondary); }
+    .progress-line.done .progress-icon { color: var(--success); }
+    .progress-line.failed { color: var(--critical); }
+    .progress-line.failed .progress-icon { color: var(--critical); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* ── Triage Report Card ── */
+    .report-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .report-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .report-title-group { flex: 1; }
+
+    .severity-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 3px 9px;
+      border-radius: 5px;
+      margin-bottom: 6px;
+    }
+
+    .sev-critical { background: rgba(226,75,74,0.15); color: var(--critical); }
+    .sev-high     { background: rgba(239,159,39,0.15); color: var(--high); }
+    .sev-medium   { background: rgba(79,126,255,0.15); color: var(--medium); }
+    .sev-low      { background: rgba(29,158,117,0.15); color: var(--low); }
+    .sev-unknown  { background: rgba(136,135,128,0.15); color: var(--unknown); }
+
+    .report-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .report-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .report-body { padding: 0; }
+
+    .report-section {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .report-section:last-child { border-bottom: none; }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-label i { font-size: 13px; }
+
+    .summary-text {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Root cause */
+    .root-cause-box {
+      background: rgba(79,126,255,0.06);
+      border: 1px solid rgba(79,126,255,0.2);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+
+    .root-cause-hypothesis {
+      font-size: 14px;
+      color: var(--text-primary);
+      font-weight: 500;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .confidence-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .confidence-bar-track {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .confidence-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: var(--accent);
+      transition: width 0.6s ease;
+    }
+
+    .confidence-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    .evidence-list {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .evidence-item {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      line-height: 1.4;
+    }
+
+    .evidence-item::before {
+      content: '•';
+      color: var(--accent);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* Timeline */
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+
+    .timeline-item {
+      display: flex;
+      gap: 12px;
+      position: relative;
+      padding-bottom: 12px;
+    }
+
+    .timeline-item:last-child { padding-bottom: 0; }
+
+    .timeline-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      width: 14px;
+    }
+
+    .timeline-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .timeline-line {
+      width: 1px;
+      flex: 1;
+      background: var(--border);
+      margin-top: 4px;
+    }
+
+    .timeline-item:last-child .timeline-line { display: none; }
+
+    .timeline-content { flex: 1; }
+
+    .timeline-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: monospace;
+      margin-bottom: 1px;
+    }
+
+    .timeline-event {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .timeline-source {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    /* Remediation */
+    .remediation-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .remediation-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .remediation-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .remediation-action {
+      font-size: 13px;
+      color: var(--text-primary);
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    .remediation-rationale {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+      line-height: 1.4;
+    }
+
+    /* SPL query */
+    .spl-box {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      position: relative;
+    }
+
+    .spl-code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: #7dd3fc;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 3px 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .copy-btn:hover { color: var(--text-primary); border-color: var(--border-focus); }
+
+    /* Agent pills */
+    .agents-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .agent-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 3px 8px;
+    }
+
+    .agent-pill i { font-size: 12px; color: var(--success); }
+
+    /* ── Input area ── */
+    .input-area {
+      padding: 16px 24px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-card);
+      flex-shrink: 0;
+    }
+
+    .input-box {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 10px 12px;
+      transition: border-color 0.15s;
+    }
+
+    .input-box:focus-within { border-color: var(--border-focus); }
+
+    #query-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.5;
+      resize: none;
+      max-height: 120px;
+      min-height: 22px;
+      font-family: inherit;
+    }
+
+    #query-input::placeholder { color: var(--text-muted); }
+
+    .send-btn {
+      width: 34px;
+      height: 34px;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .send-btn:hover { opacity: 0.9; }
+    .send-btn:active { transform: scale(0.95); }
+    .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .input-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 7px;
+      text-align: center;
+    }
+
+    /* Error message */
+    .error-msg {
+      background: rgba(226,75,74,0.08);
+      border: 1px solid rgba(226,75,74,0.25);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--critical);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon"><i class="ti ti-radar-2" aria-hidden="true"></i></div>
+    SplunkOps Copilot
+  </div>
+  <div class="status-pill" id="status-pill" onclick="checkSplunkStatus()">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Checking Splunk…</span>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <p class="sidebar-title">Quick investigate</p>
+    <div class="quick-prompts">
+      <button class="quick-prompt" onclick="fillPrompt('Payment service throwing 500s after the latest deploy. Response times spiked from 80ms to 4s.')">
+        <i class="ti ti-alert-triangle prompt-icon" aria-hidden="true"></i>Payment service 500 errors
+      </button>
+      <button class="quick-prompt" onclick="fillPrompt('Auth service latency spiked to 8 seconds in the last 30 minutes. Login success rate dropped to 40%.')">
+        <i class="ti ti-clock-x prompt-icon" aria-hidden="true"></i>Auth service latency spike
+      </button>
+      <button class="quick-prompt" onclick="fillPrompt('Database connection pool exhausted. Multiple services returning connection timeout errors.')">
+        <i class="ti ti-database-x prompt-icon" aria-hidden="true"></i>DB connection pool exhausted
+      </button>
+      <button class="quick-prompt" onclick="fillPrompt('Memory leak suspected in the order-service. Pod restarting every 20 minutes.')">
+        <i class="ti ti-server-off prompt-icon" aria-hidden="true"></i>Memory leak in order-service
+      </button>
+      <button class="quick-prompt" onclick="fillPrompt('CDN cache hit rate dropped from 92% to 12%. Origin server getting hammered.')">
+        <i class="ti ti-cloud-off prompt-icon" aria-hidden="true"></i>CDN cache miss storm
+      </button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+    <p class="sidebar-title">Investigation config</p>
+    <div class="config-section">
+      <div>
+        <p class="config-label">Service filter (optional)</p>
+        <input class="config-input" id="service-input" type="text" placeholder="e.g. payment-service" />
+      </div>
+      <div>
+        <p class="config-label">Look-back window</p>
+        <select class="config-select" id="window-select">
+          <option value="15">Last 15 minutes</option>
+          <option value="30">Last 30 minutes</option>
+          <option value="60" selected>Last 1 hour</option>
+          <option value="180">Last 3 hours</option>
+          <option value="360">Last 6 hours</option>
+          <option value="1440">Last 24 hours</option>
+        </select>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Chat -->
+  <main class="chat-area">
+    <div class="messages" id="messages">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon"><i class="ti ti-radar-2" aria-hidden="true"></i></div>
+        <h2>Describe the incident</h2>
+        <p>Tell me what's wrong in plain English. I'll query Splunk, correlate logs and metrics, find the root cause, and give you a structured triage report.</p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-box">
+        <textarea
+          id="query-input"
+          placeholder="e.g. Payment API response time spiked to 8 seconds after the 3am deploy…"
+          rows="1"
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendQuery()" title="Investigate">
+          <i class="ti ti-arrow-up" aria-hidden="true"></i>
+        </button>
+      </div>
+      <p class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line &nbsp;·&nbsp; Session ID: <span id="session-id-display">—</span></p>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  const API = '';
+  let sessionId = null;
+
+  // ── Splunk status check ──────────────────────────────────────────────────
+
+  async function checkSplunkStatus() {
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    txt.textContent = 'Checking…';
+    try {
+      const r = await fetch(`${API}/api/splunk/status`);
+      const d = await r.json();
+      if (d.splunk_reachable) {
+        dot.className = 'status-dot connected';
+        txt.textContent = 'Splunk connected';
+      } else {
+        dot.className = 'status-dot error';
+        txt.textContent = 'Splunk unreachable';
+      }
+    } catch {
+      dot.className = 'status-dot error';
+      txt.textContent = 'API offline';
+    }
+  }
+
+  checkSplunkStatus();
+
+  // ── Input helpers ────────────────────────────────────────────────────────
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendQuery();
+    }
+  }
+
+  function fillPrompt(text) {
+    const input = document.getElementById('query-input');
+    input.value = text;
+    autoResize(input);
+    input.focus();
+  }
+
+  // ── Send query ───────────────────────────────────────────────────────────
+
+  async function sendQuery() {
+    const input = document.getElementById('query-input');
+    const query = input.value.trim();
+    if (!query) return;
+
+    const service = document.getElementById('service-input').value.trim() || null;
+    const window_min = parseInt(document.getElementById('window-select').value);
+
+    hideEmpty();
+    appendUserMsg(query);
+    input.value = '';
+    autoResize(input);
+    document.getElementById('send-btn').disabled = true;
+
+    const progressId = appendProgressPanel();
+
+    try {
+      const body = {
+        query,
+        service,
+        time_window_minutes: window_min,
+        session_id: sessionId,
+      };
+
+      const response = await fetch(`${API}/api/triage/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok || !response.body) {
+        removeProgressPanel(progressId);
+        appendError('Could not start investigation. Is the backend running?');
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalReport = null;
+      let finalInvId = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split('\n\n');
+        buffer = events.pop(); // keep incomplete chunk
+
+        for (const raw of events) {
+          if (!raw.trim()) continue;
+          const lines = raw.split('\n');
+          let eventType = 'message';
+          let dataStr = '';
+          for (const line of lines) {
+            if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+            if (line.startsWith('data: ')) dataStr = line.slice(6);
+          }
+          if (!dataStr) continue;
+
+          let data;
+          try { data = JSON.parse(dataStr); } catch { continue; }
+
+          if (!finalInvId && data.investigation_id) finalInvId = data.investigation_id;
+          handleStreamEvent(progressId, eventType, data);
+
+          if (eventType === 'report_ready') {
+            finalReport = data.report;
+          }
+        }
+      }
+
+      removeProgressPanel(progressId);
+
+      if (finalReport) {
+        if (!sessionId) {
+          sessionId = finalInvId;
+          document.getElementById('session-id-display').textContent = sessionId;
+        }
+        appendReport(finalReport, finalInvId);
+      } else {
+        appendError('Investigation completed without a report.');
+      }
+
+    } catch (err) {
+      removeProgressPanel(progressId);
+      appendError('Could not reach the API. Is the backend running?');
+    } finally {
+      document.getElementById('send-btn').disabled = false;
+    }
+  }
+
+  // ── Live progress panel (SSE) ────────────────────────────────────────────
+
+  const AGENT_LABELS = {
+    log_analyst: { icon: 'ti-file-text', label: 'Log Analyst' },
+    metric_correlator: { icon: 'ti-chart-dots', label: 'Metric Correlator' },
+    deploy_inspector: { icon: 'ti-rocket', label: 'Deploy Inspector' },
+    report_generator: { icon: 'ti-file-report', label: 'Report Generator' },
+  };
+
+  function appendProgressPanel() {
+    const id = 'progress-' + Date.now();
+    const el = document.createElement('div');
+    el.className = 'msg msg-agent';
+    el.id = id;
+    el.innerHTML = `
+      <div class="msg-bubble">
+        <div class="progress-panel">
+          <div class="progress-header">
+            <div class="thinking-dots"><span></span><span></span><span></span></div>
+            <span class="progress-title">Investigating…</span>
+          </div>
+          <div class="progress-log" id="${id}-log"></div>
+        </div>
+      </div>`;
+    messages().appendChild(el);
+    scrollBottom();
+    return id;
+  }
+
+  function removeProgressPanel(id) {
+    document.getElementById(id)?.remove();
+  }
+
+  function handleStreamEvent(progressId, eventType, data) {
+    const log = document.getElementById(`${progressId}-log`);
+    if (!log) return;
+
+    const agentInfo = AGENT_LABELS[data.agent] || { icon: 'ti-robot', label: data.agent || 'Agent' };
+
+    let line = null;
+
+    if (eventType === 'agent_started') {
+      line = progressLine(agentInfo.icon, `${agentInfo.label} started investigating…`, 'active');
+      line.id = `agent-${data.agent}`;
+    } else if (eventType === 'tool_call') {
+      line = progressLine('ti-search', `${agentInfo.label}: querying Splunk…`, 'muted');
+    } else if (eventType === 'tool_result') {
+      line = progressLine('ti-database', `${agentInfo.label}: found ${data.result_count} results`, 'muted');
+    } else if (eventType === 'agent_completed') {
+      const existing = document.getElementById(`agent-${data.agent}`);
+      if (existing) {
+        existing.className = 'progress-line done';
+        existing.querySelector('.progress-text').textContent =
+          `${agentInfo.label} completed (${Math.round((data.confidence || 0) * 100)}% confidence)`;
+        existing.querySelector('i').className = 'ti ti-check progress-icon';
+        return;
+      }
+      line = progressLine('ti-check', `${agentInfo.label} completed`, 'done');
+    } else if (eventType === 'agent_failed') {
+      line = progressLine('ti-x', `${agentInfo.label} failed: ${data.error}`, 'failed');
+    } else if (eventType === 'report_generating') {
+      line = progressLine('ti-sparkles', 'Synthesising final triage report…', 'active');
+    } else if (eventType === 'error') {
+      line = progressLine('ti-alert-triangle', data.message, 'failed');
+    }
+
+    if (line) {
+      log.appendChild(line);
+      scrollBottom();
+    }
+  }
+
+  function progressLine(icon, text, state) {
+    const div = document.createElement('div');
+    div.className = `progress-line ${state}`;
+    div.innerHTML = `<i class="ti ${icon} progress-icon"></i><span class="progress-text">${escHtml(text)}</span>`;
+    return div;
+  }
+
+  // ── DOM helpers ──────────────────────────────────────────────────────────
+
+  function hideEmpty() {
+    const el = document.getElementById('empty-state');
+    if (el) el.remove();
+  }
+
+  function appendUserMsg(text) {
+    const el = document.createElement('div');
+    el.className = 'msg msg-user';
+    el.innerHTML = `<div class="msg-bubble">${escHtml(text)}</div>`;
+    messages().appendChild(el);
+    scrollBottom();
+  }
+
+  function appendThinking() {
+    const id = 'think-' + Date.now();
+    const el = document.createElement('div');
+    el.className = 'msg msg-agent';
+    el.id = id;
+    el.innerHTML = `
+      <div class="msg-bubble">
+        <div class="thinking">
+          <div class="thinking-dots"><span></span><span></span><span></span></div>
+          Investigating with Splunk agents…
+        </div>
+      </div>`;
+    messages().appendChild(el);
+    scrollBottom();
+    return id;
+  }
+
+  function removeThinking(id) {
+    document.getElementById(id)?.remove();
+  }
+
+  function appendError(msg) {
+    const el = document.createElement('div');
+    el.className = 'msg msg-agent';
+    el.innerHTML = `<div class="msg-bubble"><div class="error-msg"><i class="ti ti-alert-circle"></i>${escHtml(msg)}</div></div>`;
+    messages().appendChild(el);
+    scrollBottom();
+  }
+
+  function appendReport(report, invId) {
+    const el = document.createElement('div');
+    el.className = 'msg msg-agent';
+    el.innerHTML = buildReportHtml(report, invId);
+    messages().appendChild(el);
+    scrollBottom();
+  }
+
+  function messages() { return document.getElementById('messages'); }
+  function scrollBottom() {
+    const m = messages();
+    requestAnimationFrame(() => { m.scrollTop = m.scrollHeight; });
+  }
+
+  // ── Report HTML builder ──────────────────────────────────────────────────
+
+  function buildReportHtml(r, invId) {
+    const sev = (r.severity || 'unknown').toLowerCase();
+    const sevLabel = sev.charAt(0).toUpperCase() + sev.slice(1);
+    const duration = r.duration_seconds ? `${r.duration_seconds.toFixed(1)}s` : '';
+
+    let html = `<div class="report-card">`;
+
+    // Header
+    html += `<div class="report-header">
+      <div class="report-title-group">
+        <div class="severity-badge sev-${sev}">${sevLabel}</div>
+        <div class="report-title">${escHtml(r.title || 'Incident Investigation')}</div>
+      </div>
+      <div class="report-meta">
+        <i class="ti ti-clock" style="font-size:13px"></i>
+        ${duration}
+      </div>
+    </div>`;
+
+    html += `<div class="report-body">`;
+
+    // Summary
+    if (r.summary) {
+      html += `<div class="report-section">
+        <div class="section-label"><i class="ti ti-file-description"></i>Summary</div>
+        <div class="summary-text">${escHtml(r.summary)}</div>
+      </div>`;
+    }
+
+    // Root cause
+    if (r.root_cause) {
+      const rc = r.root_cause;
+      const pct = Math.round((rc.confidence || 0) * 100);
+      html += `<div class="report-section">
+        <div class="section-label"><i class="ti ti-search"></i>Root cause</div>
+        <div class="root-cause-box">
+          <div class="root-cause-hypothesis">${escHtml(rc.hypothesis)}</div>
+          <div class="confidence-row">
+            <div class="confidence-bar-track">
+              <div class="confidence-bar-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="confidence-label">${pct}%</div>
+          </div>
+          ${rc.evidence && rc.evidence.length ? `
+            <div class="evidence-list">
+              ${rc.evidence.map(e => `<div class="evidence-item">${escHtml(e)}</div>`).join('')}
+            </div>` : ''}
+        </div>
+      </div>`;
+    }
+
+    // Timeline
+    if (r.timeline && r.timeline.length) {
+      html += `<div class="report-section">
+        <div class="section-label"><i class="ti ti-timeline"></i>Timeline</div>
+        <div class="timeline">
+          ${r.timeline.map(t => `
+            <div class="timeline-item">
+              <div class="timeline-left">
+                <div class="timeline-dot"></div>
+                <div class="timeline-line"></div>
+              </div>
+              <div class="timeline-content">
+                <div class="timeline-time">${escHtml(t.timestamp)}</div>
+                <div class="timeline-event">${escHtml(t.event)}</div>
+                <div class="timeline-source">${escHtml(t.source)}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }
+
+    // Remediation
+    if (r.remediation_steps && r.remediation_steps.length) {
+      html += `<div class="report-section">
+        <div class="section-label"><i class="ti ti-tool"></i>Remediation steps</div>
+        <div class="remediation-list">
+          ${r.remediation_steps.map(s => `
+            <div class="remediation-item">
+              <div class="remediation-num">${s.priority}</div>
+              <div>
+                <div class="remediation-action">${escHtml(s.action)}</div>
+                <div class="remediation-rationale">${escHtml(s.rationale)}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }
+
+    // SPL dashboard query
+    if (r.splunk_dashboard_spl) {
+      html += `<div class="report-section">
+        <div class="section-label"><i class="ti ti-chart-line"></i>Splunk dashboard SPL</div>
+        <div class="spl-box">
+          <pre class="spl-code">${escHtml(r.splunk_dashboard_spl)}</pre>
+          <button class="copy-btn" onclick="copySpl(this)">
+            <i class="ti ti-copy"></i> Copy
+          </button>
+        </div>
+      </div>`;
+    }
+
+    // Agents that ran
+    if (r.agent_findings && r.agent_findings.length) {
+      html += `<div class="report-section">
+        <div class="section-label"><i class="ti ti-robot"></i>Agents used</div>
+        <div class="agents-row">
+          ${r.agent_findings.map(f => `
+            <div class="agent-pill">
+              <i class="ti ti-check"></i>
+              ${escHtml(f.agent.replace(/_/g, ' '))}
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }
+
+    html += `</div></div>`;
+    return `<div class="msg-bubble">${html}</div>`;
+  }
+
+  // ── Utilities ────────────────────────────────────────────────────────────
+
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function copySpl(btn) {
+    const code = btn.closest('.spl-box').querySelector('.spl-code').textContent;
+    navigator.clipboard.writeText(code).then(() => {
+      btn.innerHTML = '<i class="ti ti-check"></i> Copied';
+      setTimeout(() => { btn.innerHTML = '<i class="ti ti-copy"></i> Copy'; }, 1800);
+    });
+  }
+</script>
+</body>
+</html>
