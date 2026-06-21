@@ -269,6 +269,7 @@ async def start_triage_stream(request: TriageRequest):
     """
     investigation_id = str(uuid.uuid4())[:8]
     stream = create_stream(investigation_id)
+    session_id = request.session_id or investigation_id
 
     async def run_investigation():
         orchestrator = get_orchestrator()
@@ -282,7 +283,6 @@ async def start_triage_stream(request: TriageRequest):
             )
             _reports[investigation_id] = report
 
-            session_id = request.session_id or str(uuid.uuid4())[:8]
             if session_id not in _sessions:
                 _sessions[session_id] = SessionState(session_id=session_id)
             session = _sessions[session_id]
@@ -404,7 +404,10 @@ Be concise and specific. If you reference Splunk data, cite which agent found it
 
 @app.get("/", include_in_schema=False)
 async def serve_frontend():
-    return FileResponse("frontend/index.html")
+    return FileResponse(
+        "frontend/index.html",
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

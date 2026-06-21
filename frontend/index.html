@@ -463,6 +463,17 @@
       line-height: 1.6;
     }
 
+    .chat-reply {
+      font-size: 14px;
+      color: var(--text-primary);
+      line-height: 1.6;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 12px 16px;
+      max-width: 70%;
+    }
+
     /* Root cause */
     .root-cause-box {
       background: rgba(79,126,255,0.06);
@@ -843,7 +854,7 @@
           <i class="ti ti-arrow-up" aria-hidden="true"></i>
         </button>
       </div>
-      <p class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line &nbsp;·&nbsp; Session ID: <span id="session-id-display">—</span></p>
+      <p class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line &nbsp;·&nbsp; Session: <span id="session-id-display">—</span> &nbsp;·&nbsp; <a href="#" onclick="startNewInvestigation(event)" style="color: var(--accent); text-decoration: none;">New investigation</a></p>
     </div>
   </main>
 
@@ -852,6 +863,7 @@
 <script>
   const API = '';
   let sessionId = null;
+  let hasActiveReport = false;
 
   // ── Splunk status check ──────────────────────────────────────────────────
 
@@ -898,6 +910,18 @@
     input.focus();
   }
 
+  function startNewInvestigation(e) {
+    if (e) e.preventDefault();
+    sessionId = null;
+    hasActiveReport = false;
+    document.getElementById('session-id-display').textContent = '—';
+    const note = document.createElement('div');
+    note.className = 'msg msg-agent';
+    note.innerHTML = `<div class="msg-bubble"><div class="chat-reply" style="color: var(--text-muted); font-size: 12.5px;">— Starting a new investigation —</div></div>`;
+    messages().appendChild(note);
+    scrollBottom();
+  }
+
   // ── Send query ───────────────────────────────────────────────────────────
 
   async function sendQuery() {
@@ -905,14 +929,27 @@
     const query = input.value.trim();
     if (!query) return;
 
+    input.value = '';
+    autoResize(input);
+    document.getElementById('send-btn').disabled = true;
+
+    if (hasActiveReport && sessionId) {
+      await sendChatFollowUp(query);
+    } else {
+      await sendInvestigation(query);
+    }
+
+    document.getElementById('send-btn').disabled = false;
+  }
+
+  // ── Path 1: New investigation ─────────────────────────────────────────────
+
+  async function sendInvestigation(query) {
     const service = document.getElementById('service-input').value.trim() || null;
     const window_min = parseInt(document.getElementById('window-select').value);
 
     hideEmpty();
     appendUserMsg(query);
-    input.value = '';
-    autoResize(input);
-    document.getElementById('send-btn').disabled = true;
 
     const progressId = appendProgressPanel();
 
@@ -980,6 +1017,7 @@
           sessionId = finalInvId;
           document.getElementById('session-id-display').textContent = sessionId;
         }
+        hasActiveReport = true;
         appendReport(finalReport, finalInvId);
       } else {
         appendError('Investigation completed without a report.');
@@ -988,9 +1026,44 @@
     } catch (err) {
       removeProgressPanel(progressId);
       appendError('Could not reach the API. Is the backend running?');
-    } finally {
-      document.getElementById('send-btn').disabled = false;
     }
+  }
+
+  // ── Path 2: Follow-up chat on existing investigation ─────────────────────
+
+  async function sendChatFollowUp(message) {
+    appendUserMsg(message);
+    const thinkingId = appendThinking();
+
+    try {
+      const response = await fetch(`${API}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, message }),
+      });
+
+      const data = await response.json();
+      removeThinking(thinkingId);
+
+      if (!response.ok) {
+        appendError(data.detail || 'Could not get a response.');
+        return;
+      }
+
+      appendChatReply(data.reply);
+
+    } catch (err) {
+      removeThinking(thinkingId);
+      appendError('Could not reach the API. Is the backend running?');
+    }
+  }
+
+  function appendChatReply(text) {
+    const el = document.createElement('div');
+    el.className = 'msg msg-agent';
+    el.innerHTML = `<div class="msg-bubble"><div class="chat-reply">${escHtml(text)}</div></div>`;
+    messages().appendChild(el);
+    scrollBottom();
   }
 
   // ── Live progress panel (SSE) ────────────────────────────────────────────

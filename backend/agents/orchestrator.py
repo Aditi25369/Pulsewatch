@@ -38,7 +38,7 @@ def build_llm() -> BaseChatModel:
             model=settings.llm_model,
             api_key=settings.groq_api_key,
             temperature=0,
-            max_tokens=4096,
+            max_tokens=1024,
         )
     if settings.llm_provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
@@ -46,14 +46,14 @@ def build_llm() -> BaseChatModel:
             model=settings.llm_model,
             api_key=settings.anthropic_api_key,
             temperature=0,
-            max_tokens=4096,
+            max_tokens=1024,
         )
     from langchain_openai import ChatOpenAI
     return ChatOpenAI(
         model=settings.llm_model,
         api_key=settings.openai_api_key,
         temperature=0,
-        max_tokens=4096,
+        max_tokens=1024,
     )
 
 
