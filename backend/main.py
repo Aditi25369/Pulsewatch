@@ -282,6 +282,7 @@ async def start_triage_stream(request: TriageRequest):
                 stream=stream,
             )
             _reports[investigation_id] = report
+            log.info("triage.stream.report_saved", id=investigation_id, status=report.status)
 
             if session_id not in _sessions:
                 _sessions[session_id] = SessionState(session_id=session_id)
@@ -289,6 +290,7 @@ async def start_triage_stream(request: TriageRequest):
             session.messages.append(ChatMessage(role="user", content=request.query))
             session.messages.append(ChatMessage(role="assistant", content=report.summary))
             session.last_report = report
+            log.info("triage.stream.session_saved", session_id=session_id, total_sessions=len(_sessions))
 
         except Exception as e:
             log.exception("triage.stream.failed", id=investigation_id, error=str(e))

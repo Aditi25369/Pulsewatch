@@ -1017,7 +1017,9 @@
           sessionId = finalInvId;
           document.getElementById('session-id-display').textContent = sessionId;
         }
-        hasActiveReport = true;
+        if (finalReport.status === 'completed') {
+          hasActiveReport = true;
+        }
         appendReport(finalReport, finalInvId);
       } else {
         appendError('Investigation completed without a report.');
